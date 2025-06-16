@@ -1,0 +1,105 @@
+// database.php
+<?php
+$dbPath = __DIR__ . '/tarefas.db';
+$pdo = new PDO("sqlite:$dbPath");
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$pdo->exec("CREATE TABLE IF NOT EXISTS tarefas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    descricao TEXT NOT NULL,
+    data_vencimento TEXT NOT NULL,
+    concluida INTEGER DEFAULT 0
+)");
+
+// index.php
+<?php
+require 'database.php';
+
+$tarefas = $pdo->query("SELECT * FROM tarefas")->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciamento de Tarefas</title>
+</head>
+<body>
+    <h2>Adicionar Nova Tarefa</h2>
+    <form action="add_tarefa.php" method="POST">
+        <label>Descrição:</label><br>
+        <input type="text" name="descricao" required><br><br>
+
+        <label>Data de Vencimento:</label><br>
+        <input type="date" name="data_vencimento" required><br><br>
+
+        <input type="submit" value="Adicionar Tarefa">
+    </form>
+
+    <h2>Tarefas Não Concluídas</h2>
+    <ul>
+        <?php foreach ($tarefas as $tarefa): ?>
+            <?php if ($tarefa['concluida'] == 0): ?>
+                <li>
+                    <?= htmlspecialchars($tarefa['descricao']) ?> - <?= htmlspecialchars($tarefa['data_vencimento']) ?>
+                    <a href="update_tarefa.php?id=<?= $tarefa['id'] ?>">Marcar como Concluída</a>
+                    <a href="delete_tarefa.php?id=<?= $tarefa['id'] ?>">Excluir</a>
+                </li>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </ul>
+
+    <h2>Tarefas Concluídas</h2>
+    <ul>
+        <?php foreach ($tarefas as $tarefa): ?>
+            <?php if ($tarefa['concluida'] == 1): ?>
+                <li>
+                    <?= htmlspecialchars($tarefa['descricao']) ?> - <?= htmlspecialchars($tarefa['data_vencimento']) ?> (Concluída)
+                    <a href="delete_tarefa.php?id=<?= $tarefa['id'] ?>">Excluir</a>
+                </li>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    </ul>
+</body>
+</html>
+
+// add_tarefa.php
+<?php
+require 'database.php';
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $descricao = $_POST['descricao'] ?? '';
+    $data_vencimento = $_POST['data_vencimento'] ?? '';
+
+    $stmt = $pdo->prepare("INSERT INTO tarefas (descricao, data_vencimento) VALUES (?, ?)");
+    $stmt->execute([$descricao, $data_vencimento]);
+
+    header("Location: index.php");
+    exit;
+}
+
+// update_tarefa.php
+<?php
+require 'database.php';
+
+if (isset($_GET['id'])) {
+    $id = (int) $_GET['id'];
+    $stmt = $pdo->prepare("UPDATE tarefas SET concluida = 1 WHERE id = ?");
+    $stmt->execute([$id]);
+}
+
+header("Location: index.php");
+exit;
+
+// delete_tarefa.php
+<?php
+require 'database.php';
+
+if (isset($_GET['id'])) {
+    $id = (int) $_GET['id'];
+    $stmt = $pdo->prepare("DELETE FROM tarefas WHERE id = ?");
+    $stmt->execute([$id]);
+}
+
+header("Location: index.php");
+exit;
