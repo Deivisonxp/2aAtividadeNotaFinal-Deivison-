@@ -1,0 +1,102 @@
+// database.php
+<?php
+// Conexão com SQLite
+$dbPath = __DIR__ . '/livraria.db';
+$pdo = new PDO("sqlite:$dbPath");
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// Cria a tabela se não existir
+$pdo->exec("CREATE TABLE IF NOT EXISTS livros (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titulo TEXT NOT NULL,
+    autor TEXT NOT NULL,
+    ano INTEGER NOT NULL
+)");
+?>
+
+
+// index.php
+<?php
+require 'database.php';
+
+// Buscar todos os livros cadastrados
+$livros = $pdo->query("SELECT * FROM livros")->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Livraria</title>
+</head>
+<body>
+    <h2>Cadastrar Novo Livro</h2>
+    <form method="POST" action="add_book.php">
+        <label>Título:</label><br>
+        <input type="text" name="titulo" required><br><br>
+
+        <label>Autor:</label><br>
+        <input type="text" name="autor" required><br><br>
+
+        <label>Ano de Publicação:</label><br>
+        <input type="number" name="ano" required><br><br>
+
+        <input type="submit" value="Salvar">
+    </form>
+
+    <h2>Livros Cadastrados</h2>
+    <?php if (count($livros) > 0): ?>
+        <table border="1" cellpadding="5">
+            <tr><th>ID</th><th>Título</th><th>Autor</th><th>Ano</th><th>Ações</th></tr>
+            <?php foreach ($livros as $livro): ?>
+                <tr>
+                    <td><?= htmlspecialchars($livro['id']) ?></td>
+                    <td><?= htmlspecialchars($livro['titulo']) ?></td>
+                    <td><?= htmlspecialchars($livro['autor']) ?></td>
+                    <td><?= htmlspecialchars($livro['ano']) ?></td>
+                    <td>
+                        <a href="delete_book.php?id=<?= $livro['id'] ?>" onclick="return confirm('Deseja excluir este livro?');">Excluir</a>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+        </table>
+    <?php else: ?>
+        <p>Nenhum livro cadastrado.</p>
+    <?php endif; ?>
+</body>
+</html>
+
+
+// add_book.php
+<?php
+require 'database.php';
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $titulo = $_POST['titulo'] ?? '';
+    $autor = $_POST['autor'] ?? '';
+    $ano = $_POST['ano'] ?? '';
+
+    if ($titulo && $autor && $ano) {
+        $stmt = $pdo->prepare("INSERT INTO livros (titulo, autor, ano) VALUES (?, ?, ?)");
+        $stmt->execute([$titulo, $autor, $ano]);
+    }
+}
+
+header("Location: index.php");
+exit;
+?>
+
+
+// delete_book.php
+<?php
+require 'database.php';
+
+if (isset($_GET['id'])) {
+    $id = (int) $_GET['id'];
+    $stmt = $pdo->prepare("DELETE FROM livros WHERE id = ?");
+    $stmt->execute([$id]);
+}
+
+header("Location: index.php");
+exit;
+?>
